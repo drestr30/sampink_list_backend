@@ -59,6 +59,7 @@ def backgroundCheckResult(req: func.HttpRequest) -> func.HttpResponse:
         
         # Step 1: Check the status of the background check
         status_response  = requests.get(f"{TUSDATOS_API_BASE_URL}/results/{jobid}", headers=get_headers())
+        logging.info(f"Status Code: {status_response.status_code}")
 
         if status_response.status_code != 200:
             return func.HttpResponse(
@@ -66,10 +67,9 @@ def backgroundCheckResult(req: func.HttpRequest) -> func.HttpResponse:
             )
         
         status_data = status_response.json()
-        logging.info(f"Status Response: {status_data}")
-
         # Parse status response into the model
         status_model = CheckResultResponse(**status_data)
+        logging.info(f"Status: {status_model.estado.lower()}")
         
         # If status is not completed, return only the status response
         if status_model.estado.lower() != "finalizado":
@@ -80,6 +80,7 @@ def backgroundCheckResult(req: func.HttpRequest) -> func.HttpResponse:
         
          # Step 2: Fetch the final results if the check is complete
         results_response = requests.get(f"{TUSDATOS_API_BASE_URL}/report_json/{jobid}", headers=get_headers())
+        logging.info(f"Results Status Code: {results_response.status_code}")
         
         if results_response.status_code != 200:
             return func.HttpResponse(
