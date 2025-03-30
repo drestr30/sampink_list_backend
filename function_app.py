@@ -7,6 +7,10 @@ import base64
 from models import * # Import models
 from typing import Optional
 import traceback
+from dotenv import load_dotenv
+
+# Load environment variables from the .env file (if present)
+# load_dotenv('.env')
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
