@@ -8,6 +8,7 @@ from models import * # Import models
 from typing import Optional
 import traceback
 from dotenv import load_dotenv
+from db_operations import save_request, save_response
 
 # Load environment variables from the .env file (if present)
 # load_dotenv('.env')
@@ -33,18 +34,22 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()
         request_data = BackgroundCheckRequest(**req_body)
-        
         payload = request_data.model_dump(exclude_none=True)
         response = requests.post(f"{TUSDATOS_API_BASE_URL}/launch", headers=get_headers(), json=payload)
         logging.info(f"Response: {response}")
-        
+
         if response.status_code != 200:
             return func.HttpResponse(
                 response.text, status_code=response.status_code, mimetype=response.headers.get("Content-Type", "application/json")
             )
-        
+
         response_data = response.json()
         consult_response = BackgroundCheckResponse(**response_data)
+
+        # save response to db
+           # Save the request to the database
+        request_id = save_request(str(consult_response.jobid), request_data.model_dump())
+
         return func.HttpResponse(
             consult_response.model_dump_json(), status_code=response.status_code, mimetype="application/json"
         )
@@ -106,6 +111,9 @@ def backgroundCheckResults(req: func.HttpRequest) -> func.HttpResponse:
         logging.info(f"Results Response: {results_data}")
         # results_model = CheckResultsResponse().data
 
+        # Save data to db
+        save_response(jobid, results_data)
+
         return func.HttpResponse(
             results_response.text,
             status_code=200, mimetype="application/json"
@@ -114,31 +122,3 @@ def backgroundCheckResults(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.error(f"Error in backgroundCheckStatus endpoint: {str(e)}")
         return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
-
-# @app.route(route="backgroundCheckResults/{jobid}", methods=["GET"])
-# def consult_results(req: func.HttpRequest) -> func.HttpResponse:
-#     logging.info('Processing consult_results request')
-#     try:
-#         jobid = req.route_params.get('jobid')
-#         if not jobid:
-#             return func.HttpResponse("Job ID is required", status_code=400)
-        
-#         response = requests.get(f"{TUSDATOS_API_BASE_URL}/report_json/{jobid}", headers=get_headers())
-#         response_data = response.json()
-
-#         if response.status_code == 400:
-#         # Parse response into ErrorResponse model
-            
-#             error_response = ErrorResponse(**response_data)
-#             return func.HttpResponse(
-#                 error_response.json(), status_code=400, mimetype="application/json"
-#             )
-    
-#         results = {'job_id': job_id, 'data': response_data}
-#         consult_results_response = JobResultsResponse(**results)
-#         return func.HttpResponse(
-#             consult_results_response.json(), status_code=response.status_code, mimetype="application/json"
-#         )
-#     except Exception as e:
-#         logging.error(f"Error in consult_results endpoint: {str(e)}")
-#         return func.HttpResponse("Internal server error", status_code=500)

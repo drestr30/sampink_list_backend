@@ -6,3 +6,4 @@ azure-functions
 requests>=2.31.0
 pydantic
 python-dotenv
+psycopg2
