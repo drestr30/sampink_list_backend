@@ -53,9 +53,10 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
         logging.error(f"Error in consult endpoint: {str(e)}")
         return func.HttpResponse(json.dumps({"error": f"Internal server error {str(e)}"}), status_code=500, mimetype="application/json")
 
-@app.route(route="backgroundCheckResult/{jobid}", methods=["GET"])
-def backgroundCheckResult(req: func.HttpRequest) -> func.HttpResponse:
+@app.route(route="backgroundCheckStatus/{jobid}", methods=["GET"])
+def backgroundCheckStatus(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Processing consult_status request')
+
     try:
         jobid = req.route_params.get('jobid')
         if not jobid:
@@ -72,34 +73,41 @@ def backgroundCheckResult(req: func.HttpRequest) -> func.HttpResponse:
         
         status_data = status_response.json()
         # Parse status response into the model
-        status_model = CheckResultResponse(**status_data)
+        status_model = CheckStatusResponse(**status_data)
         logging.info(f"Status: {status_model.estado.lower()}")
-        
-        # If status is not completed, return only the status response
-        if status_model.estado.lower() != "finalizado":
-            return func.HttpResponse(
+
+        return func.HttpResponse(
                 status_model.model_dump_json(), 
                 status_code=200, mimetype="application/json"
             )
+
+    except Exception as e:
+        logging.error(f"Error in backgroundCheckStatus endpoint: {str(e)}")
+        return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
+
+
+@app.route(route="backgroundCheckResults/{jobid}", methods=["GET"])
+def backgroundCheckResults(req: func.HttpRequest) -> func.HttpResponse:
         
-         # Step 2: Fetch the final results if the check is complete
+    try: 
+        jobid = req.route_params.get('jobid')
+        if not jobid:
+            return func.HttpResponse("Job ID is required", status_code=400)
+  
         results_response = requests.get(f"{TUSDATOS_API_BASE_URL}/report_json/{jobid}", headers=get_headers())
         logging.info(f"Results Status Code: {results_response.status_code}")
         
         if results_response.status_code != 200:
             return func.HttpResponse(
-                json.dumps({"job_id": jobid, "status": status_model.dict(), "error": results_response.text}), 
-                status_code=results_response.status_code, mimetype="application/json"
+                results_response.text, status_code=results_response.status_code, mimetype=results_response.headers.get("Content-Type", "application/json")
             )
         
         results_data = results_response.json()
         logging.info(f"Results Response: {results_data}")
-
-        # Attach the final data to the response model
-        status_model.data = results_data
+        # results_model = CheckResultsResponse().data
 
         return func.HttpResponse(
-            status_model.model_dump_json(),
+            results_response.text,
             status_code=200, mimetype="application/json"
         )
         

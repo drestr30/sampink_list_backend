@@ -19,7 +19,7 @@ class BackgroundCheckResponse(BaseModel):
     typedoc: str = Field(..., description="Tipo de documento consultado")
     validado: Optional[bool] = Field(None, description="Retorna verdadero si el documento consultado pudo ser validado. No se retorna este valor si la consulta es de pasaporte o nombre")
 
-class CheckResultResponse(BaseModel):
+class CheckStatusResponse(BaseModel):
     cedula: int = Field(..., description="Documento consultado")
     error: bool = Field(..., description="Retorna verdadero si alguna fuente presentó un error")
     estado: str = Field(..., description="Estado de la consulta. Retorna procesando, finalizado o error")
@@ -32,6 +32,9 @@ class CheckResultResponse(BaseModel):
     time: Optional[float] = Field(None, description="Tiempo de duración de la consulta en segundos")
     typedoc: Optional[str] = Field(None, description="Tipo de documento consultado")
     validado: Optional[bool] = Field(None, description="Retorna verdadero si el documento consultado pudo ser validado, no se retorna este valor si la consulta es de pasaporte o nombre")
+    # data: Optional[dict] = Field(None, description="Diccionario con el resultado final de la consulta cuando el estado es finalizado")
+
+class CheckResultsResponse(BaseModel):
     data: Optional[dict] = Field(None, description="Diccionario con el resultado final de la consulta cuando el estado es finalizado")
 
 class BatchCheckRequest(BaseModel):
