@@ -98,8 +98,10 @@ def backgroundCheckResults(req: func.HttpRequest) -> func.HttpResponse:
         jobid = req.route_params.get('jobid')
         if not jobid:
             return func.HttpResponse("Job ID is required", status_code=400)
+        
+        mocked_jobid = "651c2ede72476080772781f5"
   
-        results_response = requests.get(f"{TUSDATOS_API_BASE_URL}/report_json/{jobid}", headers=get_headers())
+        results_response = requests.get(f"{TUSDATOS_API_BASE_URL}/report_json/{mocked_jobid}", headers=get_headers())
         logging.info(f"Results Status Code: {results_response.status_code}")
         
         if results_response.status_code != 200:
