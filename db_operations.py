@@ -20,7 +20,7 @@ def save_request(jobid, request_payload: dict) -> int:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                INSERT INTO requests (job_id, request_payload, timestamp)
+                INSERT INTO lists_requests (job_id, user_id,  request_payload, timestamp)
                 VALUES (%s, %s, NOW())
                 RETURNING id
                 """,
@@ -53,7 +53,7 @@ def save_response(jobid: int, response_payload: dict):
             # Insert the response into the responses table
             cursor.execute(
                 """
-                INSERT INTO responses (request_id, response_payload, timestamp)
+                INSERT INTO lists_responses (request_id, response_payload, timestamp)
                 VALUES (%s, %s, NOW())
                 """,
                 (request_id, json.dumps(response_payload))

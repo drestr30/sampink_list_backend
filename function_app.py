@@ -8,7 +8,7 @@ from models import * # Import models
 # from typing import Optional
 import traceback
 # from dotenv import load_dotenv
-from db_operations import save_request, save_response
+# from db_operations import save_request, save_response
 
 # Load environment variables from the .env file (if present)
 # load_dotenv('.env')
@@ -48,7 +48,7 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
 
         # save response to db
            # Save the request to the database
-        request_id = save_request(str(consult_response.jobid), request_data.model_dump())
+        # request_id = save_request(str(consult_response.jobid), request_data.model_dump())
 
         return func.HttpResponse(
             consult_response.model_dump_json(), status_code=response.status_code, mimetype="application/json"
@@ -67,8 +67,10 @@ def backgroundCheckStatus(req: func.HttpRequest) -> func.HttpResponse:
         if not jobid:
             return func.HttpResponse("Job ID is required", status_code=400)
         
+        mocked_jobid = "6460fc34-4154-43db-9438-8c5a059304c0"
+        
         # Step 1: Check the status of the background check
-        status_response  = requests.get(f"{TUSDATOS_API_BASE_URL}/results/{jobid}", headers=get_headers())
+        status_response  = requests.get(f"{TUSDATOS_API_BASE_URL}/results/{mocked_jobid}", headers=get_headers())
         logging.info(f"Status Code: {status_response.status_code}")
 
         if status_response.status_code != 200:
@@ -114,7 +116,7 @@ def backgroundCheckResults(req: func.HttpRequest) -> func.HttpResponse:
         # results_model = CheckResultsResponse().data
 
         # Save data to db
-        save_response(jobid, results_data)
+        # save_response(jobid, results_data)
 
         return func.HttpResponse(
             results_response.text,
