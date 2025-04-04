@@ -5,9 +5,9 @@ import requests
 import os
 import base64
 from models import * # Import models
-from typing import Optional
+# from typing import Optional
 import traceback
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from db_operations import save_request, save_response
 
 # Load environment variables from the .env file (if present)
