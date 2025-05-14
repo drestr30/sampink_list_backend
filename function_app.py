@@ -10,8 +10,7 @@ from db_operations import (save_backgroundCheck_request,
                         get_user_processing_status, 
                         get_check, get_check_results,
                         save_backgroundCheck_result)
-from db_operations import create_user, get_user_id
-
+from db_operations import create_user, get_user_id, get_user_password
 from tusdatos_client import launch_verify, sync_pending_checks, launch_check_results
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
@@ -21,7 +20,10 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Processing consult request')
     try:
         req_body = req.get_json()['checks']
-        user_id = -1  # Replace with actual user ID retrieval logic
+        user_id = req.get_json()['user_id']
+        if not req_body or not user_id:
+            return func.HttpResponse("User ID and checks are required", status_code=400)
+        
         request_ids = []
         current_user_credits = get_user_credits(user_id)
         logging.info(f"User {user_id} has {current_user_credits} credits.")
@@ -180,20 +182,24 @@ def registerUser(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Processing registerUser request')
     try:
         req_body = req.get_json()
-        if not req_body or 'username' not in req_body:
-            return func.HttpResponse("username Email is required", status_code=400)
+        if not req_body or 'username' not in req_body or 'password' not in req_body:
+            return func.HttpResponse("Username and password are required", status_code=400)
 
         username = req_body['username']
+        password = req_body['password']
         user_id = get_user_id(username)
 
         if user_id:
             return func.HttpResponse(
-                json.dumps({'status': 'User already exists.'}),
+                json.dumps({'status': 'failed', 'message': 'User already exists'}),
                 status_code=400, mimetype="application/json"
             )
         
-        # Create a new user
-        user_id = create_user(username)
+        # Hash the password securely
+        hashed_password = generate_password_hash(password)
+
+        # Create a new user with the hashed password
+        user_id = create_user(username, hashed_password)
         if not user_id:
             return func.HttpResponse(
                 json.dumps({'status': 'failed', 'message': 'Failed to create user'}),
@@ -210,21 +216,32 @@ def registerUser(req: func.HttpRequest) -> func.HttpResponse:
         logging.error(f"Error in registerUser endpoint: {str(e)}")
         return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
 
-@app.route(route="getUserId", methods=["POST"])
-def getUserId(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Processing getUserId request')
+@app.route(route="login", methods=["POST"])
+def login(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Processing login request')
     try:
         req_body = req.get_json()
-        if not req_body or 'username' not in req_body:
-            return func.HttpResponse("Email is required", status_code=400)
+        if not req_body or 'username' not in req_body or 'password' not in req_body:
+            return func.HttpResponse("Username and password are required", status_code=400)
 
         username = req_body['username']
+        password = req_body['password']
         user_id = get_user_id(username)
 
         if not user_id:
             return func.HttpResponse(
-                json.dumps({'status': 'failed', 'message': 'User not found'}),
-                status_code=404, mimetype="application/json"
+                json.dumps({'status': 'failed', 'message': 'Invalid username or password'}),
+                status_code=401, mimetype="application/json"
+            )
+
+        # Retrieve the stored hashed password for the user
+        stored_hashed_password = get_user_password(user_id)  # Implement this function to fetch the hashed password
+
+        # Validate the provided password against the stored hash
+        if not check_password_hash(password, stored_hashed_password):
+            return func.HttpResponse(
+                json.dumps({'status': 'failed', 'message': 'Invalid username or password'}),
+                status_code=401, mimetype="application/json"
             )
 
         return func.HttpResponse(
@@ -234,5 +251,17 @@ def getUserId(req: func.HttpRequest) -> func.HttpResponse:
 
     except Exception as e:
         logging.error(traceback.format_exc())   
-        logging.error(f"Error in getUserId endpoint: {str(e)}")
+        logging.error(f"Error in login endpoint: {str(e)}")
         return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
+    
+import hashlib
+def check_password_hash(password, hashed_password):
+    # Hash the provided password using SHA-256
+    hashed_input_password = hashlib.sha256(password.encode()).hexdigest()
+
+    # Compare the hashed input password with the stored hashed password
+    return hashed_input_password == hashed_password
+
+def generate_password_hash(password):
+    # Hash the password using SHA-256
+    return hashlib.sha256(password .encode()).hexdigest()   

@@ -3,6 +3,7 @@ import json
 from psycopg2.extras import RealDictCursor
 import os
 from dotenv import load_dotenv
+
 load_dotenv('.env')
 
 # Database connection function
@@ -195,14 +196,15 @@ def create_user(username, password= None):
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                INSERT INTO backgroundcheck_user (username, password, credits) 
-                VALUES (%s, %s, %s) RETURNING id
+                INSERT INTO backgroundcheck_user (username, password) 
+                VALUES (%s, %s)
+                RETURNING id
                 """,
-                (username, password, 0)
+                (username, password)
             )
-            user_id = cursor.fetchone()[0]
+            user_id = cursor.fetchone()
         conn.commit()
-        return user_id
+        return user_id['id']
     finally:
         conn.close()
 
@@ -220,10 +222,29 @@ def get_user_id(username):
             if result:
                 return result["id"]
             else:
+                return None
+    finally:
+        conn.close()    
+
+def get_user_password(userid):
+    conn = connect_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT password FROM backgroundcheck_user WHERE id = %s
+                """,
+                (userid,)
+            )
+            result = cursor.fetchone()
+            if result:
+                return result["password"]
+            else:
                 raise ValueError("Invalid email or password")
     finally:
         conn.close()    
+
         
 if __name__ == '__main__': 
-    print(get_user_id('test'))
-
+    r = create_user("testuser", "testpassword")
+    print(r)
