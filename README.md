@@ -10,6 +10,7 @@ Launches a background check for a user.
 #### Request Body
 ```json
 {
+  "user_id": int,
   "checks": [
     {
       "typedoc": "CC",
@@ -150,7 +151,8 @@ Registers a new user.
 #### Request Body
 ```json
 {
-  "username": "user@example.com"
+  "username": "user@example.com",
+  "password" : "stringpassword"
 }
 ```
 
@@ -177,13 +179,14 @@ Registers a new user.
 
 ---
 
-### 6. `POST /getUserId`
+### 6. `POST /login`
 Retrieves the user ID for a given username.
 
 #### Request Body
 ```json
 {
-  "username": "user@example.com"
+  "username": "user@example.com",
+  "password" : "stringpassword"
 }
 ```
 
