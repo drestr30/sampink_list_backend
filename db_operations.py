@@ -120,13 +120,25 @@ def get_user_checks(user_id: int) -> list:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT *, to_char(timestamp, 'YYYY-MM-DD HH24:MI:SS') as timestamp 
+                SELECT *, 
+                to_char(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI:SS') as timestamp 
                 FROM backgroundcheck_requests 
                 WHERE userid = %s
                 """,
                 (user_id,)
             )
-            return [dict(row) for row in cursor.fetchall()]
+            checks = [dict(row) for row in cursor.fetchall()]
+
+            for check in checks:
+                if check["status"] == "finalizado":
+                    resuls = get_check_results(check["id"])
+                    if resuls:
+                        check["hallazgos_altos"] = resuls["hallazgos_altos"]
+                        check["hallazgos_medios"] = resuls["hallazgos_medios"]
+                        check["hallazgos_bajos"] = resuls["hallazgos_bajos"]
+                    else:
+                        pass
+            return checks
     finally:
         conn.close()
 
@@ -242,9 +254,36 @@ def get_user_password(userid):
             else:
                 raise ValueError("Invalid email or password")
     finally:
+        conn.close()
+
+def get_user_outdated_results(userid):
+    conn = connect_db()
+    try:
+        with conn.cursor() as cursor:
+            # Get all check IDs for the user from requests table with status 'finalizado'
+            cursor.execute(
+                """
+                SELECT id FROM backgroundcheck_requests WHERE userid = %s AND status = 'finalizado'
+                """,
+                (userid,)
+            )
+            check_ids = [row["id"] for row in cursor.fetchall()]
+            if not check_ids:
+                return []
+            # Get all checkids that have a result
+            cursor.execute(
+                """
+                SELECT checkid FROM backgroundcheck_results WHERE checkid = ANY(%s)
+                """,
+                (check_ids,)
+            )
+            result_ids = {row["checkid"] for row in cursor.fetchall()}
+            # Return check_ids that are not in result_ids
+            return [cid for cid in check_ids if cid not in result_ids]
+    finally:
         conn.close()    
 
         
 if __name__ == '__main__': 
-    r = create_user("testuser", "testpassword")
+    r = get_user_checks(8)
     print(r)

@@ -11,7 +11,7 @@ from db_operations import (save_backgroundCheck_request,
                         get_check, get_check_results,
                         save_backgroundCheck_result)
 from db_operations import create_user, get_user_id, get_user_password
-from tusdatos_client import launch_verify, sync_pending_checks, launch_check_results
+from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
@@ -121,7 +121,9 @@ def backgroundCheckSyncStatus(req: func.HttpRequest) -> func.HttpResponse:
         needs_sync = get_user_processing_status(user_id)
         logging.info(f"User {user_id} is processing: {needs_sync}")    
         if needs_sync:
-            _ = sync_pending_checks(user_id)
+            _state_changed = sync_pending_checks(user_id)
+            if _state_changed:
+                update_pending_results(user_id)
 
         return func.HttpResponse(
                 json.dumps({'status': 'success', 'processing': needs_sync}),
@@ -137,35 +139,18 @@ def backgroundCheckResults(req: func.HttpRequest) -> func.HttpResponse:
         
     try: 
         check_id = req.route_params.get('check_id')
+        logging.info(f"Processing backgroundCheckResults request for check_id: {check_id}")
         if not check_id:
             return func.HttpResponse("check_id is required", status_code=400)
         check_results = get_check_results(check_id)
 
         if not check_results:
-            check = get_check(check_id)
+            return func.HttpResponse(
+                json.dumps({'status': 'failed', 'message': 'No results found for the given check_id'}),
+                status_code=404, mimetype="application/json"
+            )
 
-            if check['status'] == 'finalizado':
-                mocked_jobid = "651c2ede72476080772781f5"
-            else: 
-                mocked_jobid = check['jobid']   
-            results_response = launch_check_results(mocked_jobid) #get_check_results(check_id)
-            
-            if results_response.status_code != 200:
-                return func.HttpResponse(
-                    results_response.text, status_code=results_response.status_code, mimetype=results_response.headers.get("Content-Type", "application/json")
-                )
-            
-            results_data = results_response.json()
-            # Save data to db
-            save_backgroundCheck_result(check_id, 
-                                    doc=check['document'],
-                                    hallazgos_altos=len(results_data['dict_hallazgos']['altos']) if 'dict_hallazgos' in results_data else 0,
-                                    hallazgos_medios=len(results_data['dict_hallazgos']['medios']) if 'dict_hallazgos' in results_data else 0,
-                                    hallazgos_bajos=len(results_data['dict_hallazgos']['bajos']) if 'dict_hallazgos' in results_data else 0,
-                                    response_payload=results_data)
-            results_data = json.dumps(results_data)
-        else: 
-            results_data = check_results['response_payload']
+        results_data = check_results['response_payload']
 
         return func.HttpResponse(
             results_data,
