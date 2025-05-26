@@ -283,7 +283,24 @@ def get_user_outdated_results(userid):
     finally:
         conn.close()    
 
+def get_user_profile(user_id: int) -> int:
+    conn = connect_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT username, credits FROM backgroundcheck_user WHERE id = %s
+                """,
+                (user_id,)
+            )
+            result = cursor.fetchone()
+            if result:
+                return result
+            else:
+                raise ValueError(f"No user found with id {user_id}")
+    finally:
+        conn.close()    
         
 if __name__ == '__main__': 
-    r = get_user_checks(8)
-    print(r)
+    r = get_user_profile(8)
+    print('username:', r['username'])

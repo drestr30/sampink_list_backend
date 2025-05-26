@@ -212,6 +212,27 @@ Retrieves the user ID for a given username.
   }
   ```
 
+### 7. `GET /api/getUserInfo`
+
+Retrieves information about the authenticated user.
+
+**Request:**
+- Method: `GET`
+- URL: `/api/getUserInfo`
+- Headers: 
+  - `Authorization: Bearer <token>`
+
+**Response:**
+- Status: `200 OK`
+- Body:
+  ```json
+  {
+    "status": "success",
+    "username": "register mail",
+    "credits": "number of available credits",
+    // ...other user fields...
+  }
+  ```
 ---
 
 ## Requirements

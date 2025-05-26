@@ -9,7 +9,8 @@ from db_operations import (save_backgroundCheck_request,
                         get_user_checks, 
                         get_user_processing_status, 
                         get_check, get_check_results,
-                        save_backgroundCheck_result)
+                        save_backgroundCheck_result, 
+                        get_user_profile)
 from db_operations import create_user, get_user_id, get_user_password
 from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results
 
@@ -239,6 +240,35 @@ def login(req: func.HttpRequest) -> func.HttpResponse:
         logging.error(f"Error in login endpoint: {str(e)}")
         return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
     
+@app.route(route="getUserInfo/{user_id}", methods=["GET"])
+def getUserInfo(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Processing getUserCredits request')
+
+    try:
+        user_id = req.route_params.get('user_id')
+        if not user_id:
+            return func.HttpResponse("User ID is required", status_code=400)
+        
+        # Step 1: Check the status of the background check
+        prof = get_user_profile(user_id)
+
+        if prof is None:
+            return func.HttpResponse(
+                json.dumps({'status': 'failed', 'message': 'No credits found for the given user_id'}),
+                status_code=404, mimetype="application/json"
+            )
+
+        return func.HttpResponse(
+                json.dumps({'status': 'success', 'credits': prof['credits'], 'username': prof['username']}),
+                status_code=200, mimetype="application/json"
+            )
+
+    except Exception as e:
+        logging.error(traceback.format_exc())   
+        logging.error(f"Error in getUserCredits endpoint: {str(e)}")
+        return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
+
+
 import hashlib
 def check_password_hash(password, hashed_password):
     # Hash the provided password using SHA-256
