@@ -2,7 +2,7 @@ import requests
 import base64
 import os
 from models import BackgroundCheckRequest, BackgroundCheckResponse, CheckStatusResponse
-from db_operations import get_pending_checks, update_check_status
+from db_operations import * #get_pending_checks, update_check_status, get_check, save_backgroundCheck_result
 import logging
 
 # Configuration - should be moved to environment variables
@@ -57,18 +57,30 @@ def sync_pending_checks(user_id):
     if not checks_list:
         return {"message": "No pending checks found."}
     
+    _state_changed = False
     for check in checks_list:
         check_id = check['id']
         job_id = check['jobid']
         c_state = check['status']
         # Assuming TUSDATOS_API_BASE_URL and get_headers() are defined elsewhere
         status_data = get_job_status(job_id)   
-        
-        if not status_data:
+
+        if status_data is None:
+            error_text = f"Failed to fetch status for check_id {check_id} with job_id {job_id}."
+            update_status_response(check_id, error_text)
             update_check_status(check_id, 'error')
-        elif status_data.estado != c_state: 
+            logging.error(error_text)
+            continue
+
+        update_status_response(check_id, str(status_data.model_dump()))
+
+        if status_data.estado == 'finalizado':
+            update_check_result_id(check_id, status_data.id)
+        
+        if status_data.estado != c_state: 
             update_check_status(check_id, status_data.estado)
-    return True
+            _state_changed = True
+    return _state_changed
 
 def launch_check_results(job_id):
     """
@@ -76,5 +88,30 @@ def launch_check_results(job_id):
     """
 
     # Assuming TUSDATOS_API_BASE_URL and get_headers() are defined elsewhere
-    response = requests.get(f"{TUSDATOS_API_BASE_URL}/report_json/{job_id}", headers=get_headers())
-    return response
+    try:
+        response = requests.get(f"{TUSDATOS_API_BASE_URL}/report_json/{job_id}", headers=get_headers())
+        response.raise_for_status()
+        return response
+    except requests.RequestException as e:
+        logging.error(f"Error fetching check results for job_id {job_id}: {e}")
+        return None
+
+def update_pending_results(user_id):    
+    check_ids = get_user_outdated_results(user_id)
+
+    for check_id in check_ids:
+        check = get_check(check_id)
+
+        job_id = check['result_id']   
+
+        results_response = launch_check_results(job_id) #get_check_results(check_id)
+
+        results_data = results_response.json()
+        # Save data to db
+        save_backgroundCheck_result(check_id, 
+                                doc=check['document'],
+                                hallazgos_altos=len(results_data['dict_hallazgos']['altos']) if 'dict_hallazgos' in results_data else 0,
+                                hallazgos_medios=len(results_data['dict_hallazgos']['medios']) if 'dict_hallazgos' in results_data else 0,
+                                hallazgos_bajos=len(results_data['dict_hallazgos']['bajos']) if 'dict_hallazgos' in results_data else 0,
+                                response_payload=results_data)
+    return results_data
