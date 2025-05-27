@@ -9,7 +9,6 @@ import logging
 TUSDATOS_API_BASE_URL = os.environ.get("TUSDATOS_API_URL", "https://docs.tusdatos.co/api")
 TUSDATOS_API_USERNAME = os.environ.get("TUSDATOS_API_USERNAME", "pruebas")
 TUSDATOS_API_PASSWORD = os.environ.get("TUSDATOS_API_PASSWORD", "password")
-ENV = os.environ.get("ENV", "dev")
 
 VALID_DOC_TYPES = {'CC', 'CE', 'INT', 'NIT', 'PP', 'PPT', 'NOMBRE'}
 
@@ -65,10 +64,20 @@ def sync_pending_checks(user_id):
         c_state = check['status']
         # Assuming TUSDATOS_API_BASE_URL and get_headers() are defined elsewhere
         status_data = get_job_status(job_id)   
-        
-        if not status_data:
+
+        if status_data is None:
+            error_text = f"Failed to fetch status for check_id {check_id} with job_id {job_id}."
+            update_status_response(check_id, error_text)
             update_check_status(check_id, 'error')
-        elif status_data.estado != c_state: 
+            logging.error(error_text)
+            continue
+
+        update_status_response(check_id, str(status_data.model_dump()))
+
+        if status_data.estado == 'finalizado':
+            update_check_result_id(check_id, status_data.id)
+        
+        if status_data.estado != c_state: 
             update_check_status(check_id, status_data.estado)
             _state_changed = True
     return _state_changed
@@ -93,10 +102,7 @@ def update_pending_results(user_id):
     for check_id in check_ids:
         check = get_check(check_id)
 
-        job_id = check['jobid']   
-
-        if ENV == 'dev':
-            job_id = "651c2ede72476080772781f5"
+        job_id = check['result_id']   
 
         results_response = launch_check_results(job_id) #get_check_results(check_id)
 

@@ -300,6 +300,40 @@ def get_user_profile(user_id: int) -> int:
                 raise ValueError(f"No user found with id {user_id}")
     finally:
         conn.close()    
+
+def update_status_response(check_id: int, status_response: str) -> bool:
+    conn = connect_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE backgroundcheck_requests SET status_response = %s WHERE id = %s
+                """,
+                (status_response, check_id)
+            )
+            if cursor.rowcount == 0:
+                return False  # No rows were updated, check might not exist
+        conn.commit()
+        return True  # Successfully updated check status
+    finally:
+        conn.close()
+
+def update_check_result_id(check_id: int, result_id: int) -> bool:
+    conn = connect_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE backgroundcheck_requests SET result_id = %s WHERE id = %s
+                """,
+                (result_id, check_id)
+            )
+            if cursor.rowcount == 0:
+                return False  # No rows were updated, check might not exist
+        conn.commit()
+        return True  # Successfully updated check status
+    finally:
+        conn.close()
         
 if __name__ == '__main__': 
     r = get_user_profile(8)
