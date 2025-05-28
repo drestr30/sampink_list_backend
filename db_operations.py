@@ -121,7 +121,7 @@ def get_user_checks(user_id: int) -> list:
             cursor.execute(
                 """
                 SELECT *, 
-                to_char(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI:SS') as timestamp 
+                to_char(timestamp AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI:SS') as timestamp 
                 FROM backgroundcheck_requests 
                 WHERE userid = %s
                 """,
@@ -336,5 +336,5 @@ def update_check_result_id(check_id: int, result_id: int) -> bool:
         conn.close()
         
 if __name__ == '__main__': 
-    r = get_user_profile(8)
+    r = get_user_outdated_results(8)
     print('username:', r['username'])

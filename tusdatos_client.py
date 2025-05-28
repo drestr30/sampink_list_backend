@@ -4,9 +4,13 @@ import os
 from models import BackgroundCheckRequest, BackgroundCheckResponse, CheckStatusResponse
 from db_operations import * #get_pending_checks, update_check_status, get_check, save_backgroundCheck_result
 import logging
+logging.basicConfig(level=logging.INFO)
+
+# from dotenv import load_dotenv
+# load_dotenv(".env")
 
 # Configuration - should be moved to environment variables
-TUSDATOS_API_BASE_URL = os.environ.get("TUSDATOS_API_URL", "https://docs.tusdatos.co/api")
+TUSDATOS_API_BASE_URL = os.environ.get("TUSDATOS_API_BASE_URL", "https://docs.tusdatos.co/api")
 TUSDATOS_API_USERNAME = os.environ.get("TUSDATOS_API_USERNAME", "pruebas")
 TUSDATOS_API_PASSWORD = os.environ.get("TUSDATOS_API_PASSWORD", "password")
 
@@ -14,6 +18,8 @@ VALID_DOC_TYPES = {'CC', 'CE', 'INT', 'NIT', 'PP', 'PPT', 'NOMBRE'}
 
 # Helper function to get headers
 def get_headers():
+    logging.info(f"Using TUSDATOS_API_BASE_URL: {TUSDATOS_API_BASE_URL}")
+    logging.info(f"Using TUSDATOS_API_USERNAME: {TUSDATOS_API_USERNAME}")
     auth_str = f"{TUSDATOS_API_USERNAME}:{TUSDATOS_API_PASSWORD}"
     base64_auth = base64.b64encode(auth_str.encode('ascii')).decode('ascii')
     return {"Authorization": f"Basic {base64_auth}", "Content-Type": "application/json"}
@@ -29,10 +35,40 @@ def launch_verify(request_data: BackgroundCheckRequest) -> BackgroundCheckRespon
     response = requests.post(f"{TUSDATOS_API_BASE_URL}/launch", headers=get_headers(), json=payload)
     
     if response.status_code == 200:
+    
         response_data = response.json()
-        return response.status_code, BackgroundCheckResponse(**response_data)
-    else:
-        return response.status_code, response.text
+        logging.info(f"Background check launched successfully {response}.")
+        logging.debug(f"Response data: {response_data}")
+
+        if response_data.get('jobid', None):
+            status = 'procesando'
+            jobid = response_data['jobid']
+            id = None
+        elif response_data.get('id'):
+            status = 'finalizado'
+            jobid = None
+            id = response_data['id']
+        else:  
+            status = 'error'
+            jobid = None
+            id = None
+        response_data = json.dumps(response_data, indent=4, ensure_ascii=False)
+    
+    else: 
+        logging.error(f"Error launching background check: {response.text}")
+        status = 'error'
+        jobid = None    
+        id = None
+        response_data = response.text
+
+    response_dict = {
+        "id": id,
+        "jobid": jobid,
+        "status": status,
+        "response_data": response_data
+    }
+
+    return response.status_code, response_dict
 
 def get_job_status(job_id) -> CheckStatusResponse:
     """
