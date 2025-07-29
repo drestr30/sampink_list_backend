@@ -3,16 +3,22 @@ import json
 from psycopg2.extras import RealDictCursor
 import os
 from dotenv import load_dotenv
+from psycopg2.extensions import connection
+import traceback
 
 load_dotenv('.env')
 
-# Database connection function
-def connect_db():
-    connection_string = os.getenv("DB_CONNECTION_STRING")
-    return psycopg2.connect(
-        connection_string,
-        cursor_factory=RealDictCursor
-    )
+def connect_db()-> connection:
+    POSTGRES_REMOTE_ENDPOINT = os.environ['PGHOST']
+    POSTGRES_REMOTE_USER = os.environ['PGUSER']
+    POSTGRES_REMOTE_PASSWORD = os.environ['PGPASSWORD']
+    POSTGRES_DB_NAME = os.environ['PGDATABASE']
+    sslmode = "require"
+    # logging.info(f"Env: {POSTGRES_REMOTE_ENDPOINT},{POSTGRES_DB_NAME},{POSTGRES_REMOTE_USER}")
+    conn_string = f"host={POSTGRES_REMOTE_ENDPOINT} user={POSTGRES_REMOTE_USER} dbname={POSTGRES_DB_NAME} password={POSTGRES_REMOTE_PASSWORD} sslmode={sslmode}"
+
+    conn: connection = psycopg2.connect(conn_string, cursor_factory=RealDictCursor)
+    return conn
 
 # Function to save a request
 def save_backgroundCheck_request(userid: int, document: str, typedoc: str, payload: dict, jobid:str, status: str , response_code:int, response_content:str) -> int:
@@ -121,7 +127,7 @@ def get_user_checks(user_id: int) -> list:
             cursor.execute(
                 """
                 SELECT *, 
-                to_char(timestamp AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI:SS') as timestamp 
+                to_char(timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH24:MI:SS') as timestamp 
                 FROM backgroundcheck_requests 
                 WHERE userid = %s
                 """,

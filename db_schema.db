@@ -1,0 +1,36 @@
+-- Table: backgroundcheck_user
+CREATE TABLE backgroundcheck_user (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255),
+    credits INTEGER DEFAULT 0
+);
+
+-- Table: backgroundcheck_requests
+CREATE TABLE backgroundcheck_requests (
+    id SERIAL PRIMARY KEY,
+    userid INTEGER REFERENCES backgroundcheck_user(id),
+    document VARCHAR(100) NOT NULL,
+    typedoc VARCHAR(50) NOT NULL,
+    payload JSONB,
+    jobid VARCHAR(100) NOT NULL,
+    status VARCHAR(100) NOT NULL,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    response_code INTEGER,
+    response_content TEXT,
+    status_response TEXT,
+    result_id VARCHAR(100)
+);
+
+-- Table: backgroundcheck_results
+CREATE TABLE backgroundcheck_results (
+    id SERIAL PRIMARY KEY,
+    checkid INTEGER REFERENCES backgroundcheck_requests(id),
+    document VARCHAR(100) NOT NULL,
+    jobid VARCHAR(100) NOT NULL,
+    hallazgos_altos INTEGER,
+    hallazgos_medios INTEGER,
+    hallazgos_bajos INTEGER,
+    response_payload TEXT,
+    timestamp TIMESTAMP DEFAULT NOW()
+);
