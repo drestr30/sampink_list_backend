@@ -10,9 +10,13 @@ from db_operations import (save_backgroundCheck_request,
                         get_user_processing_status, 
                         get_check, get_check_results,
                         save_backgroundCheck_result, 
-                        get_user_profile)
+                        get_user_profile, 
+                        update_check_result_id, 
+                        get_user_outdated_results)
 from db_operations import create_user, get_user_id, get_user_password
 from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results
+
+logging.basicConfig(level=logging.INFO)
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
@@ -36,31 +40,23 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
             current_user_credits = current_user_credits -1
 
             request_data = BackgroundCheckRequest(**item)
-            status_code, response = launch_verify(request_data)   
-            logging.info(f"Response: {response}")
-
-            if status_code != 200:
-                status = 'failed'
-                jobid = None
-                response_text = response
-            else:
-                status = 'procesando' #if response.validado == True else 'error'
-                jobid = str(response.jobid)
-                response_text = str(response.model_dump())
+            status_code, response_dict = launch_verify(request_data)   
 
             # Save the request to the database
             request_id = save_backgroundCheck_request(userid=user_id,
                                                         document=request_data.doc,
                                                         typedoc=request_data.typedoc,
                                                         payload=request_data.model_dump(),
-                                                        jobid=jobid,
-                                                        status=status,
+                                                        jobid=response_dict['jobid'],
+                                                        status=response_dict['status'],
                                                         response_code=status_code,
-                                                        response_content=response_text)
-            request_ids.append({'id': request_id,'doc': request_data.doc,  'status': status, 'response': response_text})
+                                                        response_content=response_dict['response_data'])
+            if status_code == 200 and response_dict['id']:
+                update_check_result_id(request_id, response_dict['id'])
+                
+            request_ids.append({'id': request_id,'doc': request_data.doc,  'status': response_dict['status'], 'response': response_dict['response_data']})
 
             # Update user credits in the database
-            # logging.info(f"User {user_id} has {current_user_credits} credits after processing requests.")   
             update_user_credits(user_id, current_user_credits)
 
         if not request_ids:
@@ -93,6 +89,7 @@ def getUserChecks(req: func.HttpRequest) -> func.HttpResponse:
         
         # Step 1: Check the status of the background check
         checks_list = get_user_checks(user_id)
+        logging.info(f"User {user_id} has {len(checks_list)} checks.")
 
         if not checks_list:
             return func.HttpResponse(
@@ -120,11 +117,12 @@ def backgroundCheckSyncStatus(req: func.HttpRequest) -> func.HttpResponse:
         
         # Step 1: Check the status of the background check
         needs_sync = get_user_processing_status(user_id)
+        _state_changed = False
         logging.info(f"User {user_id} is processing: {needs_sync}")    
         if needs_sync:
             _state_changed = sync_pending_checks(user_id)
-            if _state_changed:
-                update_pending_results(user_id)
+        if _state_changed or any(get_user_outdated_results(user_id)):
+            update_pending_results(user_id)
 
         return func.HttpResponse(
                 json.dumps({'status': 'success', 'processing': needs_sync}),
