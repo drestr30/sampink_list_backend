@@ -16,6 +16,8 @@ from db_operations import (save_backgroundCheck_request,
 from db_operations import create_user, get_user_id, get_user_password
 from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results
 
+logging.basicConfig(level=logging.INFO)
+
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
 @app.route(route="backgroundCheck", methods=["POST"])
@@ -87,6 +89,7 @@ def getUserChecks(req: func.HttpRequest) -> func.HttpResponse:
         
         # Step 1: Check the status of the background check
         checks_list = get_user_checks(user_id)
+        logging.info(f"User {user_id} has {len(checks_list)} checks.")
 
         if not checks_list:
             return func.HttpResponse(

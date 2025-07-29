@@ -4,6 +4,7 @@ import os
 from models import BackgroundCheckRequest, BackgroundCheckResponse, CheckStatusResponse
 from db_operations import * #get_pending_checks, update_check_status, get_check, save_backgroundCheck_result
 import logging
+import json
 logging.basicConfig(level=logging.INFO)
 
 # from dotenv import load_dotenv
@@ -70,7 +71,7 @@ def launch_verify(request_data: BackgroundCheckRequest) -> BackgroundCheckRespon
 
     return response.status_code, response_dict
 
-def get_job_status(job_id) -> CheckStatusResponse:
+def get_job_status(job_id) -> str:
     """
     Function to get the status of a job using its job ID.
     """
@@ -80,10 +81,10 @@ def get_job_status(job_id) -> CheckStatusResponse:
     
     if response.status_code == 200:
         status_data = response.json()
-        status_model = CheckStatusResponse(**status_data)
-        return status_model
+        # status_model = CheckStatusResponse(**status_data)
+        return status_data
     else:
-        return None
+        return response.json()
 
 def sync_pending_checks(user_id):
     """
@@ -99,22 +100,31 @@ def sync_pending_checks(user_id):
         job_id = check['jobid']
         c_state = check['status']
         # Assuming TUSDATOS_API_BASE_URL and get_headers() are defined elsewhere
-        status_data = get_job_status(job_id)   
+        max_retries = 3
+        retry_count = 0
+        status_data = None
 
+        while retry_count < max_retries:
+            status_data = get_job_status(job_id)
+            if status_data is not None:
+                break
+            retry_count += 1
+            logging.warning(f"Retry {retry_count}/{max_retries} for check_id {check_id} with job_id {job_id}")
+        
         if status_data is None:
-            error_text = f"Failed to fetch status for check_id {check_id} with job_id {job_id}."
+            error_text = f"Failed to fetch status for check_id {check_id} with job_id {job_id} after {max_retries} retries."
             update_status_response(check_id, error_text)
-            update_check_status(check_id, 'error')
+            update_check_status(check_id, 'procesando')
             logging.error(error_text)
             continue
 
-        update_status_response(check_id, str(status_data.model_dump()))
+        update_status_response(check_id, json.dumps(status_data))
 
-        if status_data.estado == 'finalizado':
-            update_check_result_id(check_id, status_data.id)
-        
-        if status_data.estado != c_state: 
-            update_check_status(check_id, status_data.estado)
+        if status_data['estado'] == 'finalizado':
+            update_check_result_id(check_id, status_data['id'])
+
+        if status_data['estado'] != c_state:
+            update_check_status(check_id, status_data['estado'])
             _state_changed = True
     return _state_changed
 
