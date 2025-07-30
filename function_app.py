@@ -14,11 +14,26 @@ from db_operations import (save_backgroundCheck_request,
                         update_check_result_id, 
                         get_user_outdated_results)
 from db_operations import create_user, get_user_id, get_user_password
+import os
 from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results
 
 logging.basicConfig(level=logging.INFO)
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+
+@app.function_name(name="swagger_json")
+@app.route(route="swagger.json", auth_level=func.AuthLevel.ANONYMOUS)
+def swagger_json(req: func.HttpRequest) -> func.HttpResponse:
+    path = os.path.join(os.path.dirname(__file__), "swagger.json")
+    with open(path, "r") as f:
+        return func.HttpResponse(f.read(), mimetype="application/json")
+    
+@app.function_name(name="swagger_ui")
+@app.route(route="docs", auth_level=func.AuthLevel.ANONYMOUS)
+def swagger_ui(req: func.HttpRequest) -> func.HttpResponse:
+    path = os.path.join(os.path.dirname(__file__), "docs.html")
+    with open(path, "r") as f:
+        return func.HttpResponse(f.read(), mimetype="text/html")
 
 @app.route(route="backgroundCheck", methods=["POST"])
 def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
@@ -103,6 +118,7 @@ def getUserChecks(req: func.HttpRequest) -> func.HttpResponse:
             )
 
     except Exception as e:
+        logging.error(traceback.format_exc())
         logging.error(f"Error in getUserChecks endpoint: {str(e)}")
         return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
 

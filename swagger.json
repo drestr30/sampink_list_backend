@@ -1,0 +1,163 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Sampi Suite Entity Watcher API",
+    "version": "1.0.0",
+    "description": "API documentation for Sampi Suite Entity Watcher endpoints."
+  },
+  "paths": {
+    "/api/backgroundCheck": {
+      "post": {
+        "summary": "Submit background check requests.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {"type": "string"},
+                  "checks": {
+                    "type": "array",
+                    "items": {"type": "object"}
+                  }
+                },
+                "required": ["user_id", "checks"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Success"},
+          "400": {"description": "Bad Request"},
+          "500": {"description": "Internal Server Error"}
+        }
+      }
+    },
+    "/api/getUserChecks/{user_id}": {
+      "get": {
+        "summary": "Get all background checks for a user.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Success"},
+          "400": {"description": "User ID required"},
+          "404": {"description": "No checks found"},
+          "500": {"description": "Internal Server Error"}
+        }
+      }
+    },
+    "/api/backgroundCheckSyncStatus/{user_id}": {
+      "get": {
+        "summary": "Get sync status for user's background checks.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Success"},
+          "400": {"description": "User ID required"},
+          "500": {"description": "Internal Server Error"}
+        }
+      }
+    },
+    "/api/backgroundCheckResults/{check_id}": {
+      "get": {
+        "summary": "Get results for a background check.",
+        "parameters": [
+          {
+            "name": "check_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Success"},
+          "400": {"description": "Check ID required"},
+          "404": {"description": "No results found"},
+          "500": {"description": "Internal Server Error"}
+        }
+      }
+    },
+    "/api/registerUser": {
+      "post": {
+        "summary": "Register a new user.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {"type": "string"},
+                  "password": {"type": "string"}
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "User created"},
+          "400": {"description": "User already exists or bad request"},
+          "500": {"description": "Failed to create user"}
+        }
+      }
+    },
+    "/api/login": {
+      "post": {
+        "summary": "Login user.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {"type": "string"},
+                  "password": {"type": "string"}
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {"description": "Login success"},
+          "401": {"description": "Invalid credentials"},
+          "500": {"description": "Internal Server Error"}
+        }
+      }
+    },
+    "/api/getUserInfo/{user_id}": {
+      "get": {
+        "summary": "Get user info (credits, username).",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {"type": "string"}
+          }
+        ],
+        "responses": {
+          "200": {"description": "Success"},
+          "400": {"description": "User ID required"},
+          "404": {"description": "No user found"},
+          "500": {"description": "Internal Server Error"}
+        }
+      }
+    }
+  }
+}
