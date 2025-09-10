@@ -120,12 +120,17 @@ def sync_pending_checks(user_id):
 
         update_status_response(check_id, json.dumps(status_data))
 
-        if status_data['estado'] == 'finalizado':
-            update_check_result_id(check_id, status_data['id'])
+        try:
+            if status_data['estado'] == 'finalizado':
+                update_check_result_id(check_id, status_data['id'])
 
-        if status_data['estado'] != c_state:
-            update_check_status(check_id, status_data['estado'])
-            _state_changed = True
+            if status_data['estado'] != c_state:
+                update_check_status(check_id, status_data['estado'])
+                _state_changed = True
+        except KeyError as e:
+            logging.error(f"KeyError for check_id {check_id} with job_id {job_id}: {e}")
+            update_check_status(check_id, 'error')
+            continue
     return _state_changed
 
 def launch_check_results(job_id):
