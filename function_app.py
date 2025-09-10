@@ -108,8 +108,8 @@ def getUserChecks(req: func.HttpRequest) -> func.HttpResponse:
 
         if not checks_list:
             return func.HttpResponse(
-                json.dumps({'status': 'failed', 'message': 'No pending checks found'}),
-                status_code=404, mimetype="application/json"
+                json.dumps({'status': 'success', 'message': 'No checks found'}),
+                status_code=200, mimetype="application/json"
             )
 
         return func.HttpResponse(
