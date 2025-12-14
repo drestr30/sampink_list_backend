@@ -15,7 +15,7 @@ from db_operations import (save_backgroundCheck_request,
                         get_user_outdated_results)
 from db_operations import create_user, get_user_id, get_user_password
 import os
-from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results
+from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results, launch_report_html, launch_report_pdf
 
 logging.basicConfig(level=logging.INFO)
 
@@ -175,6 +175,86 @@ def backgroundCheckResults(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.error(traceback.format_exc())   
         logging.error(f"Error in backgroundCheckResults endpoint: {str(e)}")
+        return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
+
+@app.route(route="getCheckReport_pdf/{check_id}", methods=["GET"])
+def getCheckReport_pdf(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Processing getCheckReport request')
+
+    try:
+        check_id = req.route_params.get('check_id')
+        if not check_id:
+            return func.HttpResponse("Check ID is required", status_code=400)
+        
+        # Step 1: Check the status of the background check
+        check = get_check(check_id)
+        logging.info(f"Check {check_id} found: {check is not None}")
+
+        if not check:
+            return func.HttpResponse(
+                json.dumps({'status': 'failed', 'message': 'No check found for the given check_id'}),
+                status_code=404, mimetype="application/json"
+            )
+        
+        result_id = check.get('result_id')
+        status = check.get('status')
+
+        if status != 'finalizado' or not result_id:
+            return func.HttpResponse(
+                json.dumps({'status': 'failed', 'message': 'Check is not yet finalized or result ID is missing'}),
+                status_code=400, mimetype="application/json"
+            )
+        
+        pdf_report_response = launch_report_pdf(result_id)
+        
+        return func.HttpResponse(
+                        pdf_report_response.content,
+                        status_code=200, mimetype="application/pdf"
+            )
+
+    except Exception as e:
+        logging.error(traceback.format_exc())   
+        logging.error(f"Error in getCheckReport endpoint: {str(e)}")
+        return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
+    
+@app.route(route="getCheckReport_html/{check_id}", methods=["GET"])
+def getCheckReport_html(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Processing getCheckReport request')
+
+    try:
+        check_id = req.route_params.get('check_id')
+        if not check_id:
+            return func.HttpResponse("Check ID is required", status_code=400)
+        
+        # Step 1: Check the status of the background check
+        check = get_check(check_id)
+        logging.info(f"Check {check_id} found: {check is not None}")
+
+        if not check:
+            return func.HttpResponse(
+                json.dumps({'status': 'failed', 'message': 'No check found for the given check_id'}),
+                status_code=404, mimetype="application/json"
+            )
+        
+        result_id = check.get('result_id')
+        status = check.get('status')
+
+        if status != 'finalizado' or not result_id:
+            return func.HttpResponse(
+                json.dumps({'status': 'failed', 'message': 'Check is not yet finalized or result ID is missing'}),
+                status_code=400, mimetype="application/json"
+            )
+        
+        html_report_response = launch_report_html(result_id)
+        
+        return func.HttpResponse(
+                        html_report_response.content,
+                        status_code=200, mimetype="text/html"
+            )
+
+    except Exception as e:
+        logging.error(traceback.format_exc())   
+        logging.error(f"Error in getCheckReport endpoint: {str(e)}")
         return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
     
 @app.route(route="registerUser", methods=["POST"])

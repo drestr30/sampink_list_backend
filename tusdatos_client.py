@@ -146,6 +146,34 @@ def launch_check_results(job_id):
     except requests.RequestException as e:
         logging.error(f"Error fetching check results for job_id {job_id}: {e}")
         return None
+    
+def launch_report_pdf(result_id):
+    """
+    Function to get the PDF report of a check using its result ID.
+    """
+
+    # Assuming TUSDATOS_API_BASE_URL and get_headers() are defined elsewhere
+    try:
+        response = requests.get(f"{TUSDATOS_API_BASE_URL}/v2/report_pdf/{result_id}", headers=get_headers())
+        response.raise_for_status()
+        return response  # Return raw PDF bytes
+    except requests.RequestException as e:
+        logging.error(f"Error fetching PDF report for result_id {result_id}: {e}")
+        return None
+    
+def launch_report_html(result_id):
+    """
+    Function to get the HTML report of a check using its result ID.
+    """
+
+    # Assuming TUSDATOS_API_BASE_URL and get_headers() are defined elsewhere
+    try:
+        response = requests.get(f"{TUSDATOS_API_BASE_URL}/v2/report/{result_id}", headers=get_headers())
+        response.raise_for_status()
+        return response  # Return raw HTML bytes
+    except requests.RequestException as e:
+        logging.error(f"Error fetching HTML report for result_id {result_id}: {e}")
+        return None
 
 def update_pending_results(user_id):    
     check_ids = get_user_outdated_results(user_id)
