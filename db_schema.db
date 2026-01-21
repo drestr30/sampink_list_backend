@@ -3,7 +3,8 @@ CREATE TABLE backgroundcheck_user (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255),
-    credits INTEGER DEFAULT 0
+    credits INTEGER DEFAULT 0,
+    request_counter INTEGER DEFAULT 0
 );
 
 -- Table: backgroundcheck_requests

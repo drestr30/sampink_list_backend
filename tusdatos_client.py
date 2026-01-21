@@ -86,7 +86,7 @@ def get_job_status(job_id) -> str:
     else:
         return response.json()
 
-def sync_pending_checks(user_id):
+def sync_pending_checks(user_id=None):
     """
     Function to sync the check status of a user.
     """
@@ -175,8 +175,8 @@ def launch_report_html(result_id):
         logging.error(f"Error fetching HTML report for result_id {result_id}: {e}")
         return None
 
-def update_pending_results(user_id):    
-    check_ids = get_user_outdated_results(user_id)
+def update_pending_results(user_id: int = None):    
+    check_ids = get_outdated_results(user_id)
 
     for check_id in check_ids:
         check = get_check(check_id)

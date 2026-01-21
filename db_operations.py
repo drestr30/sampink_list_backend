@@ -70,33 +70,33 @@ def save_backgroundCheck_result(check_id: int, doc: str, hallazgos_altos:int, ha
     finally:
         conn.close()
 
-def get_user_credits(user_id: int) -> int:
+def get_user_credits_counter(user_id: int) -> int:
     conn = connect_db()
     try:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT credits FROM backgroundcheck_user WHERE id = %s
+                SELECT credits, request_counter FROM backgroundcheck_user WHERE id = %s
                 """,
                 (user_id,)
             )
             result = cursor.fetchone()
             if result:
-                return result["credits"]
+                return result["credits"], result["request_counter"]
             else:
                 raise ValueError(f"No user found with id {user_id}")
     finally:
-        conn.close()    
+        conn.close()   
 
-def update_user_credits(user_id: int, credits: int) -> bool:
+def update_user_credits_counter(user_id: int, credits: int, counter:int) -> bool:
     conn = connect_db()
     try:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                UPDATE backgroundcheck_user SET credits = %s WHERE id = %s
+                UPDATE backgroundcheck_user SET credits = %s, request_counter = %s WHERE id = %s
                 """,
-                (credits, user_id)
+                (credits, counter, user_id)
             )
             if cursor.rowcount == 0:
                 return False  # No rows were updated, user might not exist
@@ -105,16 +105,20 @@ def update_user_credits(user_id: int, credits: int) -> bool:
     finally:
         conn.close()
 
-def get_pending_checks(user_id: int) -> list:
+def get_pending_checks(user_id: int= None) -> list:
     conn = connect_db()
     try:
+        if user_id:
+            query = """
+                SELECT * FROM backgroundcheck_requests WHERE userid = %s AND status = 'procesando'"""
+            params = (user_id,)
+        else:
+            query = """
+                SELECT * FROM backgroundcheck_requests WHERE status = 'procesando'"""
+            params = ()
+        
         with conn.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT * FROM backgroundcheck_requests WHERE userid = %s AND status = 'procesando'
-                """,
-                (user_id,)
-            )
+            cursor.execute(query, params)
             return cursor.fetchall()
     finally:
         conn.close()
@@ -165,16 +169,21 @@ def update_check_status(check_id: int, status) -> bool:
     finally:
         conn.close()
 
-def get_user_processing_status(user_id: int) -> list:
+def get_processing_status(user_id: int = None) -> list:
     conn = connect_db()
     try:
-        with conn.cursor() as cursor:
-            cursor.execute(
-                """
+        if user_id:
+            query = """
                 SELECT COUNT(*) FROM backgroundcheck_requests WHERE userid = %s AND status = 'procesando'
-                """,
-                (user_id,)
-            )
+                """
+            params = (user_id,)
+        else:
+            query = """
+                SELECT COUNT(*) FROM backgroundcheck_requests WHERE status = 'procesando'
+                """
+            params = ()
+        with conn.cursor() as cursor:
+            cursor.execute(query, params)
             result = cursor.fetchone()
             return result["count"] > 0
     finally:
@@ -262,17 +271,22 @@ def get_user_password(userid):
     finally:
         conn.close()
 
-def get_user_outdated_results(userid):
+def get_outdated_results(userid: int = None):
     conn = connect_db()
     try:
         with conn.cursor() as cursor:
             # Get all check IDs for the user from requests table with status 'finalizado'
-            cursor.execute(
-                """
+            if userid:
+                query =  """
                 SELECT id FROM backgroundcheck_requests WHERE userid = %s AND status = 'finalizado'
-                """,
-                (userid,)
-            )
+                """
+                params = (userid,)
+            else:
+                query =  """
+                SELECT id FROM backgroundcheck_requests WHERE status = 'finalizado'
+                """
+                params = ()
+            cursor.execute(query, params)
             check_ids = [row["id"] for row in cursor.fetchall()]
             if not check_ids:
                 return []
@@ -342,5 +356,5 @@ def update_check_result_id(check_id: int, result_id: int) -> bool:
         conn.close()
         
 if __name__ == '__main__': 
-    r = get_user_outdated_results(8)
-    print('username:', r['username'])
+    r = get_outdated_results()
+    print(r)

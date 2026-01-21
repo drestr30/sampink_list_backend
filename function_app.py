@@ -4,15 +4,15 @@ import json
 from models import BackgroundCheckRequest
 import traceback
 from db_operations import (save_backgroundCheck_request, 
-                        get_user_credits, 
-                        update_user_credits, 
+                        get_user_credits_counter, 
+                        update_user_credits_counter, 
                         get_user_checks, 
-                        get_user_processing_status, 
+                        get_processing_status, 
                         get_check, get_check_results,
                         save_backgroundCheck_result, 
                         get_user_profile, 
                         update_check_result_id, 
-                        get_user_outdated_results)
+                        get_outdated_results)
 from db_operations import create_user, get_user_id, get_user_password
 import os
 from tusdatos_client import launch_verify, sync_pending_checks, update_pending_results, launch_report_html, launch_report_pdf
@@ -45,7 +45,7 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
             return func.HttpResponse("User ID and checks are required", status_code=400)
         
         request_ids = []
-        current_user_credits = get_user_credits(user_id)
+        current_user_credits, current_user_counter = get_user_credits_counter(user_id)
         logging.info(f"User {user_id} has {current_user_credits} credits.")
 
         for item in req_body:
@@ -53,6 +53,7 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
                 logging.warning(f"User {user_id} has insufficient credits to process further requests.")
                 break
             current_user_credits = current_user_credits -1
+            current_user_counter = current_user_counter + 1
 
             request_data = BackgroundCheckRequest(**item)
             status_code, response_dict = launch_verify(request_data)   
@@ -72,7 +73,7 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
             request_ids.append({'id': request_id,'doc': request_data.doc,  'status': response_dict['status'], 'response': response_dict['response_data']})
 
             # Update user credits in the database
-            update_user_credits(user_id, current_user_credits)
+            update_user_credits_counter(user_id, current_user_credits, current_user_counter)
 
         if not request_ids:
             return func.HttpResponse(
@@ -127,17 +128,20 @@ def backgroundCheckSyncStatus(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Processing userIsProcessing request')
 
     try:
-        user_id = req.route_params.get('user_id')
-        if not user_id:
-            return func.HttpResponse("User ID is required", status_code=400)
+        user_id = req.route_params.get('user_id', None)
+        if user_id == 0:  #this is a trick for integration with SSC
+            user_id = None
+
+        # if not user_id:
+        #     # return func.HttpResponse("User ID is required", status_code=400)
         
         # Step 1: Check the status of the background check
-        needs_sync = get_user_processing_status(user_id)
+        needs_sync = get_processing_status(user_id)
         _state_changed = False
         logging.info(f"User {user_id} is processing: {needs_sync}")    
         if needs_sync:
             _state_changed = sync_pending_checks(user_id)
-        if _state_changed or any(get_user_outdated_results(user_id)):
+        if _state_changed or any(get_outdated_results(user_id)):
             update_pending_results(user_id)
 
         return func.HttpResponse(
