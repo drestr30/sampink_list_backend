@@ -56,7 +56,8 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
             current_user_counter = current_user_counter + 1
 
             request_data = BackgroundCheckRequest(**item)
-            status_code, response_dict = launch_verify(request_data)   
+            status_code, response_dict = launch_verify(request_data)
+            logging.info(f"Background check launched for document {request_data.doc} with status code {status_code}. Respose dict {response_dict}")
 
             # Save the request to the database
             request_id = save_backgroundCheck_request(userid=user_id,
@@ -129,7 +130,7 @@ def backgroundCheckSyncStatus(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         user_id = req.route_params.get('user_id', None)
-        if user_id == 0:  #this is a trick for integration with SSC
+        if int(user_id) == 0:  #this is a trick for integration with SSC
             user_id = None
 
         # if not user_id:
@@ -208,8 +209,9 @@ def getCheckReport_pdf(req: func.HttpRequest) -> func.HttpResponse:
                 json.dumps({'status': 'failed', 'message': 'Check is not yet finalized or result ID is missing'}),
                 status_code=400, mimetype="application/json"
             )
-        
-        pdf_report_response = launch_report_pdf(result_id)
+        type_doc = check.get('typedoc')
+        logging.info(f"Launching PDF report for check_id {check_id} with result_id {result_id} and type_doc {type_doc}")
+        pdf_report_response = launch_report_pdf(result_id, type_doc)
         
         return func.HttpResponse(
                         pdf_report_response.content,

@@ -147,14 +147,19 @@ def launch_check_results(job_id):
         logging.error(f"Error fetching check results for job_id {job_id}: {e}")
         return None
     
-def launch_report_pdf(result_id):
+def launch_report_pdf(result_id, type_doc):
     """
     Function to get the PDF report of a check using its result ID.
     """
 
     # Assuming TUSDATOS_API_BASE_URL and get_headers() are defined elsewhere
     try:
-        response = requests.get(f"{TUSDATOS_API_BASE_URL}/v2/report_pdf/{result_id}", headers=get_headers())
+        if type_doc.lower() == 'nit' :
+            report_endpoint = 'report_nit_pdf'
+        else:
+            report_endpoint = 'report_pdf'
+
+        response = requests.get(f"{TUSDATOS_API_BASE_URL}/v2/{report_endpoint}/{result_id}", headers=get_headers())
         response.raise_for_status()
         return response  # Return raw PDF bytes
     except requests.RequestException as e:
