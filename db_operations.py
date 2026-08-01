@@ -70,7 +70,7 @@ def save_backgroundCheck_result(check_id: int, doc: str, hallazgos_altos:int, ha
     finally:
         conn.close()
 
-def get_user_credits_counter(user_id: int) -> int:
+def get_user_info(user_id: int) -> int:
     conn = connect_db()
     try:
         with conn.cursor() as cursor:
@@ -139,18 +139,23 @@ def get_user_checks(user_id: int) -> list:
             )
             checks = [dict(row) for row in cursor.fetchall()]
 
-            for check in checks:
-                if check["status"] == "finalizado":
-                    resuls = get_check_results(check["id"])
-                    if resuls:
-                        check["hallazgos_altos"] = resuls["hallazgos_altos"]
-                        check["hallazgos_medios"] = resuls["hallazgos_medios"]
-                        check["hallazgos_bajos"] = resuls["hallazgos_bajos"]
-                    else:
-                        pass
-            return checks
+        # ✅ reuse same connection, no nested connect_db()
+        for check in checks:
+            if check["status"] == "finalizado":
+                results = get_check_results(check["id"], conn)
+                if results:
+                    check["hallazgos_altos"] = results["hallazgos_altos"]
+                    check["hallazgos_medios"] = results["hallazgos_medios"]
+                    check["hallazgos_bajos"] = results["hallazgos_bajos"]
+
+        conn.commit()  # ✅ explicit commit
+        return checks
+
+    except Exception as e:
+        conn.rollback()  # ✅ always rollback on error
+        raise e
     finally:
-        conn.close()
+        conn.close()  # ✅ always closes
 
 def update_check_status(check_id: int, status) -> bool:
     conn = connect_db()
@@ -203,19 +208,22 @@ def get_check(check_id: int) -> dict:
     finally:
         conn.close()
 
-def get_check_results(check_id: int) -> dict:
-    conn = connect_db()
+def get_check_results(check_id: int, conn=None) -> dict:
+    # ✅ accepts existing connection, only opens new one if called standalone
+    close_after = False
+    if conn is None:
+        conn = connect_db()
+        close_after = True
     try:
         with conn.cursor() as cursor:
             cursor.execute(
-                """
-                SELECT * FROM backgroundcheck_results WHERE checkid = %s
-                """,
+                "SELECT * FROM backgroundcheck_results WHERE checkid = %s",
                 (check_id,)
             )
             return cursor.fetchone()
     finally:
-        conn.close()
+        if close_after:
+            conn.close()
 
 def create_user(username, password= None):
     conn = connect_db()
