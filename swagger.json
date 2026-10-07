@@ -101,9 +101,10 @@
                 "type": "object",
                 "properties": {
                   "username": {"type": "string"},
-                  "password": {"type": "string"}
+                  "password": {"type": "string", "description": "Optional. Users created by SSC have no password."},
+                  "credits": {"type": "integer", "default": 0, "description": "Optional. Initial credits for the user."}
                 },
-                "required": ["username", "password"]
+                "required": ["username"]
               }
             }
           }

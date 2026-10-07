@@ -152,9 +152,11 @@ Registers a new user.
 ```json
 {
   "username": "user@example.com",
-  "password" : "stringpassword"
+  "password" : "stringpassword",
+  "credits": 10
 }
 ```
+`password` and `credits` are optional (`credits` defaults to 0).
 
 #### Response
 - **200 OK**
@@ -167,7 +169,9 @@ Registers a new user.
 - **400 Bad Request**
   ```json
   {
-    "status": "User already exists."
+    "status": "failed",
+    "message": "User already exists",
+    "user_id": 1
   }
   ```
 - **500 Internal Server Error**

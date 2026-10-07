@@ -268,24 +268,25 @@ def registerUser(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Processing registerUser request')
     try:
         req_body = req.get_json()
-        if not req_body or 'username' not in req_body or 'password' not in req_body:
-            return func.HttpResponse("Username and password are required", status_code=400)
+        if not req_body or 'username' not in req_body:
+            return func.HttpResponse("Username is required", status_code=400)
 
         username = req_body['username']
-        password = req_body['password']
+        password = req_body.get('password')
+        credits = int(req_body.get('credits', 0))
         user_id = get_user_id(username)
 
         if user_id:
             return func.HttpResponse(
-                json.dumps({'status': 'failed', 'message': 'User already exists'}),
+                json.dumps({'status': 'failed', 'message': 'User already exists', 'user_id': user_id}),
                 status_code=400, mimetype="application/json"
             )
-        
-        # Hash the password securely
-        hashed_password = generate_password_hash(password)
 
-        # Create a new user with the hashed password
-        user_id = create_user(username, hashed_password)
+        # Hash the password securely (users created by SSC have no password, API only)
+        hashed_password = generate_password_hash(password) if password else None
+
+        # Create a new user with the hashed password and initial credits
+        user_id = create_user(username, hashed_password, credits)
         if not user_id:
             return func.HttpResponse(
                 json.dumps({'status': 'failed', 'message': 'Failed to create user'}),
