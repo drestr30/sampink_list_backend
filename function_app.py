@@ -4,7 +4,7 @@ import json
 from models import BackgroundCheckRequest
 import traceback
 from db_operations import (save_backgroundCheck_request, 
-                        get_user_credits_counter, 
+                        get_user_info, 
                         update_user_credits_counter, 
                         get_user_checks, 
                         get_processing_status, 
@@ -41,12 +41,14 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()['checks']
         user_id = req.get_json()['user_id']
+        provider = req.get_json().get('provider', 'tus-datos')  # Optional provider parameter
         if not req_body or not user_id:
             return func.HttpResponse("User ID and checks are required", status_code=400)
         
         request_ids = []
-        current_user_credits, current_user_counter = get_user_credits_counter(user_id)
+        current_user_credits, current_user_counter = get_user_info(user_id)
         logging.info(f"User {user_id} has {current_user_credits} credits.")
+        # logging.info(f"User {user_id} TUSDATOS_API_USERNAME: {td_username}")
 
         for item in req_body:
             if current_user_credits <= 0:
@@ -95,34 +97,41 @@ def backgroundCheck(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500, mimetype="application/json"
         )
 
-@app.route(route="getUserChecks/{user_id}", methods=["GET"])
-def getUserChecks(req: func.HttpRequest) -> func.HttpResponse:
-    logging.info('Processing getUserChecks request')
+# Deprecated endpoint
+# @app.route(route="getUserChecks/{user_id}", methods=["GET"])
+# def getUserChecks(req: func.HttpRequest) -> func.HttpResponse:
+#     logging.info('Processing getUserChecks request')
 
-    try:
-        user_id = req.route_params.get('user_id')
-        if not user_id:
-            return func.HttpResponse("User ID is required", status_code=400)
+#     try:
+#         user_id = req.route_params.get('user_id')
+#         if not user_id:
+#             return func.HttpResponse("User ID is required", status_code=400)
         
-        # Step 1: Check the status of the background check
-        checks_list = get_user_checks(user_id)
-        logging.info(f"User {user_id} has {len(checks_list)} checks.")
+#         # _, _, td_username, td_password = get_user_info(user_id)
 
-        if not checks_list:
-            return func.HttpResponse(
-                json.dumps({'status': 'success', 'message': 'No checks found'}),
-                status_code=200, mimetype="application/json"
-            )
+#         # if td_username and td_password:
+#         #     os.environ["TUSDATOS_API_USERNAME"] = td_username
+#         #     os.environ["TUSDATOS_API_PASSWORD"] = td_password
+        
+#         # Step 1: Check the status of the background check
+#         checks_list = get_user_checks(user_id)
+#         logging.info(f"User {user_id} has {len(checks_list)} checks.")
 
-        return func.HttpResponse(
-                json.dumps({'status': 'success', 'checks': checks_list}),
-                status_code=200, mimetype="application/json"
-            )
+#         if not checks_list:
+#             return func.HttpResponse(
+#                 json.dumps({'status': 'success', 'message': 'No checks found'}),
+#                 status_code=200, mimetype="application/json"
+#             )
 
-    except Exception as e:
-        logging.error(traceback.format_exc())
-        logging.error(f"Error in getUserChecks endpoint: {str(e)}")
-        return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
+#         return func.HttpResponse(
+#                 json.dumps({'status': 'success', 'checks': checks_list}),
+#                 status_code=200, mimetype="application/json"
+#             )
+
+#     except Exception as e:
+#         logging.error(traceback.format_exc())
+#         logging.error(f"Error in getUserChecks endpoint: {str(e)}")
+#         return func.HttpResponse(f"Internal server error : {str(e)}", status_code=500)
 
 @app.route(route="backgroundCheckSyncStatus/{user_id}", methods=["GET"])
 def backgroundCheckSyncStatus(req: func.HttpRequest) -> func.HttpResponse:
