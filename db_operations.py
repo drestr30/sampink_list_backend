@@ -217,17 +217,17 @@ def get_check_results(check_id: int) -> dict:
     finally:
         conn.close()
 
-def create_user(username, password= None):
+def create_user(username, password= None, credits: int = 0):
     conn = connect_db()
     try:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                INSERT INTO backgroundcheck_user (username, password) 
-                VALUES (%s, %s)
+                INSERT INTO backgroundcheck_user (username, password, credits)
+                VALUES (%s, %s, %s)
                 RETURNING id
                 """,
-                (username, password)
+                (username, password, credits)
             )
             user_id = cursor.fetchone()
         conn.commit()
